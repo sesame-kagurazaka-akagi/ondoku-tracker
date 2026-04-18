@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="音読記録">
-<title>音読記録v4</title>
+<title>音読記録</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:-apple-system,sans-serif;background:#f5f5f5;max-width:480px;margin:0 auto;}
@@ -172,7 +172,7 @@ function renderCal(){
     h+='<div class="summary-row">';
     h+='<div class="sbox"><div class="val">'+rc+'</div><div class="lbl">音読回数</div></div>';
     if(cl.anime)h+='<div class="sbox"><div class="val">'+ac+'</div><div class="lbl">アニメ(ゴールド★)</div></div>';
-    h+='<div class="sbox"><div class="val">'+((rc+ac)*5)+'円</div><div class="lbl">今月積立</div></div>';
+    h+='<div class="sbox"><div class="val">'+(rc+ac)*5+'pt</div><div class="lbl">今月の積立</div></div>';
     h+='</div>';
     if(cl.anime){
       var nn2=name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
@@ -206,14 +206,14 @@ function renderSeason(){
         if(mo>=10&&now.getMonth()+1<=2)yr=ty-1;
         var rc=mrc(cl.id,name,yr,mo);
         var ac=cl.anime?getAnime(cl.id,name,yr,mo):0;
-        var yen=(rc+ac)*5;
-        tot+=yen;
-        h+='<div class="srow"><span>'+MN[mo-1]+'</span><span>音読'+rc+'回'+(cl.anime?' アニメ'+ac+'回':'')+'</span><span class="syen">'+yen+'円</span></div>';
+        var pt=(rc+ac)*5;
+        tot+=pt;
+        h+='<div class="srow"><span>'+MN[mo-1]+'</span><span>音読'+rc+'回'+(cl.anime?' アニメ'+ac+'回':'')+'</span><span class="syen">'+pt+'pt</span></div>';
       }
       var units=[1000,700,500,200],card=0;
       for(var ui=0;ui<units.length;ui++)while(tot-card>=units[ui])card+=units[ui];
-      h+='<div class="srow" style="font-weight:600"><span>合計</span><span></span><span class="syen">'+tot+'円</span></div>';
-      h+='<div class="carry">図書カード '+card+'円 ／ 繰越 '+(tot-card)+'円</div>';
+      h+='<div class="srow" style="font-weight:600"><span>合計</span><span></span><span class="syen">'+tot+'pt</span></div>';
+      h+='<div class="carry">図書カード '+card+'pt分 ／ 繰越 '+(tot-card)+'pt</div>';
     }
     h+='</div>';
   }
@@ -232,8 +232,8 @@ function renderMsg(){
   var cl=CL[ci],v=document.getElementById('msel').value,p=v.split('-'),y=parseInt(p[0]),m=parseInt(p[1]);
   var lines='【'+y+'年'+MN[m-1]+'の音読チャレンジ結果】\n\nみなさん、今月もよくがんばりました！\n\n';
   for(var i=0;i<cl.st.length;i++){
-    var n=cl.st[i],rc=mrc(cl.id,n,y,m),ac=cl.anime?getAnime(cl.id,n,y,m):0,yen=(rc+ac)*5;
-    lines+='⭐ '+n+' さん：音読'+rc+'回'+(cl.anime?' アニメ'+ac+'回':'')+' → '+yen+'円積立\n';
+    var n=cl.st[i],rc=mrc(cl.id,n,y,m),ac=cl.anime?getAnime(cl.id,n,y,m):0,pt=(rc+ac)*5;
+    lines+='⭐ '+n+' さん：音読'+rc+'回'+(cl.anime?' アニメ'+ac+'回':'')+' → '+pt+'ポイント積立\n';
   }
   lines+='\nシーズン末に図書カードでお渡しします🎁\n引き続きよろしくお願いします🎵';
   document.getElementById('msgout').textContent=lines;
