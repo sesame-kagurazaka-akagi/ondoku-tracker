@@ -42,7 +42,6 @@ body{font-family:-apple-system,sans-serif;background:#f5f5f5;max-width:480px;mar
 .cumul-table{width:100%;border-collapse:collapse;font-size:13px;}
 .cumul-table th{background:#f5f5f5;padding:8px 6px;text-align:center;font-weight:600;color:#555;border-bottom:1px solid #e0e0e0;}
 .cumul-table td{padding:8px 6px;text-align:center;border-bottom:1px solid #f0f0f0;color:#222;}
-.cumul-table tr:last-child td{font-weight:700;background:#fff9e6;}
 .bar-wrap{background:#f0f0f0;border-radius:6px;height:10px;width:100%;margin-top:4px;}
 .bar-fill{background:#60a5fa;border-radius:6px;height:10px;}
 .chart-card{background:#fff;border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,0.07);}
@@ -69,114 +68,237 @@ body{font-family:-apple-system,sans-serif;background:#f5f5f5;max-width:480px;mar
 <div id="screen-settings" class="screen">
   <p class="section-title">生徒名の編集</p>
   <div id="name-list"></div>
-  <button class="add-btn" onclick="addStudent()">＋ 生徒を追加</button>
+  <button class="add-btn" onclick="addStudent()">+ 生徒を追加</button>
   <button class="save-btn" onclick="saveNames()">保存する</button>
 </div>
 <script>
-const WEEKS=['第1週','第2週','第3週','第4週','第5週'];
-const MONTHS=['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
-const THRESHOLD=5;
-let students=JSON.parse(localStorage.getItem('students')||'["あかり","けんた","まさき","しゅうや","そう","はやと"]');
-let data=JSON.parse(localStorage.getItem('data')||'{}');
-function save(){localStorage.setItem('students',JSON.stringify(students));localStorage.setItem('data',JSON.stringify(data));}
-function currentMonth(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');}
-function monthLabel(m){const[y,mo]=m.split('-');return y+'年'+MONTHS[parseInt(mo)-1];}
-function weeksInMonth(m){const[y,mo]=m.split('-');const first=new Date(y,parseInt(mo)-1,1).getDay();const days=new Date(y,parseInt(mo),0).getDate();return Math.ceil((first+days)/7);}
-function getVal(name,month,week){return data[name+'|'+month+'|'+week]||0;}
-function setVal(name,month,week,v){data[name+'|'+month+'|'+week]=Math.max(0,v);save();renderRecord();}
-function monthTotal(name,month){let t=0;for(let w=0;w<weeksInMonth(month);w++)t+=getVal(name,month,w);return t;}
+var WEEKS=['第1週','第2週','第3週','第4週','第5週'];
+var MONTHS=['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+var THRESHOLD=5;
+var students=JSON.parse(localStorage.getItem('students')||'["あかり","けんた","まさき","しゅうや","そう","はやと"]');
+var data=JSON.parse(localStorage.getItem('data')||'{}');
+
+function save(){
+  localStorage.setItem('students',JSON.stringify(students));
+  localStorage.setItem('data',JSON.stringify(data));
+}
+
+function currentMonth(){
+  var d=new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+}
+
+function monthLabel(m){
+  var parts=m.split('-');
+  return parts[0]+'年'+MONTHS[parseInt(parts[1])-1];
+}
+
+function weeksInMonth(m){
+  var parts=m.split('-');
+  var y=parseInt(parts[0]);
+  var mo=parseInt(parts[1]);
+  var first=new Date(y,mo-1,1).getDay();
+  var days=new Date(y,mo,0).getDate();
+  return Math.ceil((first+days)/7);
+}
+
+function getVal(name,month,week){
+  return data[name+'|'+month+'|'+week]||0;
+}
+
+function setVal(name,month,week,v){
+  data[name+'|'+month+'|'+week]=Math.max(0,v);
+  save();
+  renderRecord();
+}
+
+function monthTotal(name,month){
+  var t=0;
+  var w=weeksInMonth(month);
+  for(var i=0;i<w;i++) t+=getVal(name,month,i);
+  return t;
+}
+
 function allMonths(){
-  const keys=Object.keys(data);
-  const ms=new Set();
-  keys.forEach(k=>{const p=k.split('|');if(p.length===3)ms.add(p[1]);});
-  const cur=currentMonth();ms.add(cur);
-  return Array.from(ms).sort();
+  var keys=Object.keys(data);
+  var ms={};
+  for(var i=0;i<keys.length;i++){
+    var p=keys[i].split('|');
+    if(p.length===3) ms[p[1]]=true;
+  }
+  ms[currentMonth()]=true;
+  return Object.keys(ms).sort();
 }
+
 function cumulTotal(name){
-  return allMonths().reduce((s,m)=>s+monthTotal(name,m),0);
+  var months=allMonths();
+  var t=0;
+  for(var i=0;i<months.length;i++) t+=monthTotal(name,months[i]);
+  return t;
 }
+
 function renderRecord(){
-  const month=currentMonth();const weeks=weeksInMonth(month);const el=document.getElementById('screen-record');
+  var month=currentMonth();
+  var weeks=weeksInMonth(month);
+  var el=document.getElementById('screen-record');
   el.innerHTML='<p class="section-title">'+monthLabel(month)+'の記録</p>';
-  students.forEach(name=>{
-    const total=monthTotal(name,month);
-    let html='<div class="card"><div class="student-header"><div class="avatar">'+name.charAt(0)+'</div><div class="student-name">'+name+'</div></div>';
-    for(let w=0;w<weeks;w++){
-      const v=getVal(name,month,w);const ok=v>=THRESHOLD;const nn=name.replace(/'/g,"\\'");
-      html+='<div class="week-row"><span class="wlabel">'+WEEKS[w]+'</span><div class="counter"><button class="cnt-btn" onclick="setVal(\''+nn+'\',\''+month+'\','+w+','+(v-1)+')">−</button><span class="cnt-val">'+v+'</span><button class="cnt-btn" onclick="setVal(\''+nn+'\',\''+month+'\','+w+','+(v+1)+')">＋</button></div><span class="badge '+(ok?'badge-ok':'badge-ng')+'">'+(ok?'🍬 飴あり':'−')+'</span></div>';
+  for(var si=0;si<students.length;si++){
+    var name=students[si];
+    var total=monthTotal(name,month);
+    var html='<div class="card">';
+    html+='<div class="student-header"><div class="avatar">'+name.charAt(0)+'</div>';
+    html+='<div class="student-name">'+name+'</div></div>';
+    for(var w=0;w<weeks;w++){
+      var v=getVal(name,month,w);
+      var ok=v>=THRESHOLD;
+      var nn=name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+      html+='<div class="week-row">';
+      html+='<span class="wlabel">'+WEEKS[w]+'</span>';
+      html+='<div class="counter">';
+      html+='<button class="cnt-btn" onclick="setVal(\''+nn+'\',\''+month+'\','+w+','+(v-1)+')">-</button>';
+      html+='<span class="cnt-val">'+v+'</span>';
+      html+='<button class="cnt-btn" onclick="setVal(\''+nn+'\',\''+month+'\','+w+','+(v+1)+')">+</button>';
+      html+='</div>';
+      html+='<span class="badge '+(ok?'badge-ok':'badge-ng')+'">'+(ok?'飴あり':'-')+'</span>';
+      html+='</div>';
     }
-    html+='<div class="month-total"><div><div class="month-sub">今月の合計</div><div class="month-num">'+total+' 回</div></div></div></div>';
+    html+='<div class="month-total">';
+    html+='<div><div class="month-sub">今月の合計</div>';
+    html+='<div class="month-num">'+total+' 回</div></div></div></div>';
     el.innerHTML+=html;
-  });
+  }
 }
+
 function renderMessageScreen(){
-  const sel=document.getElementById('msg-month-sel');const now=new Date();const months=[];
-  for(let i=0;i<6;i++){const d=new Date(now.getFullYear(),now.getMonth()-i,1);months.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'));}
-  sel.innerHTML=months.map(m=>'<option value="'+m+'">'+monthLabel(m)+'</option>').join('');
+  var sel=document.getElementById('msg-month-sel');
+  var now=new Date();
+  var months=[];
+  for(var i=0;i<6;i++){
+    var d=new Date(now.getFullYear(),now.getMonth()-i,1);
+    months.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'));
+  }
+  var opts='';
+  for(var i=0;i<months.length;i++){
+    opts+='<option value="'+months[i]+'">'+monthLabel(months[i])+'</option>';
+  }
+  sel.innerHTML=opts;
   renderMessage();
 }
+
 function renderMessage(){
-  const sel=document.getElementById('msg-month-sel').value;const label=monthLabel(sel);
-  let lines='【'+label+'の音読チャレンジ結果】\n\nみなさん、今月もよくがんばりました！\n\n';
-  students.forEach(name=>{const total=monthTotal(name,sel);const star=total>=20?'⭐⭐':total>=10?'⭐':'　';lines+=star+' '+name+' さん：'+total+' 回\n';});
-  const grand=students.reduce((s,n)=>s+monthTotal(n,sel),0);
-  lines+='\nみんなの合計：'+grand+' 回\n\n引き続き毎日の音読をよろしくお願いします🎵';
+  var sel=document.getElementById('msg-month-sel').value;
+  var label=monthLabel(sel);
+  var lines='【'+label+'の音読チャレンジ結果】\n\nみなさん、今月もよくがんばりました！\n\n';
+  for(var i=0;i<students.length;i++){
+    var name=students[i];
+    var total=monthTotal(name,sel);
+    var star=total>=20?'⭐⭐':total>=10?'⭐':'  ';
+    lines+=star+' '+name+' さん：'+total+' 回\n';
+  }
+  var grand=0;
+  for(var i=0;i<students.length;i++) grand+=monthTotal(students[i],sel);
+  lines+='\nみんなの合計：'+grand+' 回\n\n引き続き毎日の音読をよろしくお願いします！';
   document.getElementById('msg-output').textContent=lines;
 }
+
 function copyMsg(){
-  navigator.clipboard.writeText(document.getElementById('msg-output').textContent).then(()=>{
-    const btn=document.querySelector('.copy-btn');btn.textContent='コピーしました！';setTimeout(()=>btn.textContent='コピーする',1500);
+  var text=document.getElementById('msg-output').textContent;
+  navigator.clipboard.writeText(text).then(function(){
+    var btn=document.querySelector('.copy-btn');
+    btn.textContent='コピーしました！';
+    setTimeout(function(){btn.textContent='コピーする';},1500);
   });
 }
+
 function renderCumul(){
-  const months=allMonths();
-  const el=document.getElementById('cumul-content');
-  const maxVal=Math.max(...students.map(n=>cumulTotal(n)),1);
-  let html='<div class="chart-card"><p class="section-title" style="margin-bottom:16px;">累計ランキング</p>';
-  const sorted=[...students].sort((a,b)=>cumulTotal(b)-cumulTotal(a));
-  sorted.forEach((name,i)=>{
-    const total=cumulTotal(name);
-    const pct=Math.round(total/maxVal*100);
+  var months=allMonths();
+  var el=document.getElementById('cumul-content');
+  var maxVal=1;
+  for(var i=0;i<students.length;i++){
+    var t=cumulTotal(students[i]);
+    if(t>maxVal) maxVal=t;
+  }
+  var sorted=students.slice().sort(function(a,b){return cumulTotal(b)-cumulTotal(a);});
+  var html='<div class="chart-card"><p class="section-title">累計ランキング</p>';
+  for(var i=0;i<sorted.length;i++){
+    var name=sorted[i];
+    var total=cumulTotal(name);
+    var pct=Math.round(total/maxVal*100);
+    var medal=i===0?'🥇 ':i===1?'🥈 ':i===2?'🥉 ':'';
     html+='<div style="margin-bottom:14px;">';
-    html+='<div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="font-size:14px;font-weight:600;">'+（i===0?'🥇 ':i===1?'🥈 ':i===2?'🥉 ':''）+name+'</span><span style="font-size:14px;font-weight:700;color:#1d4ed8;">'+total+' 回</span></div>';
+    html+='<div style="display:flex;justify-content:space-between;margin-bottom:4px;">';
+    html+='<span style="font-size:14px;font-weight:600;">'+medal+name+'</span>';
+    html+='<span style="font-size:14px;font-weight:700;color:#1d4ed8;">'+total+' 回</span></div>';
     html+='<div class="bar-wrap"><div class="bar-fill" style="width:'+pct+'%"></div></div>';
     html+='</div>';
-  });
+  }
   html+='</div>';
-  html+='<div class="chart-card"><p class="section-title" style="margin-bottom:12px;">月別一覧</p>';
-  html+='<table class="cumul-table"><tr><th>名前</th>';
-  months.forEach(m=>{html+='<th>'+monthLabel(m).replace('年','<br>').replace('の','')+'</th>';});
+  html+='<div class="chart-card"><p class="section-title">月別一覧</p>';
+  html+='<div style="overflow-x:auto;"><table class="cumul-table"><tr><th>名前</th>';
+  for(var i=0;i<months.length;i++){
+    html+='<th>'+monthLabel(months[i])+'</th>';
+  }
   html+='<th>累計</th></tr>';
-  students.forEach(name=>{
+  for(var si=0;si<students.length;si++){
+    var name=students[si];
     html+='<tr><td style="text-align:left;font-weight:600;">'+name+'</td>';
-    months.forEach(m=>{html+='<td>'+monthTotal(name,m)+'</td>';});
+    for(var i=0;i<months.length;i++){
+      html+='<td>'+monthTotal(name,months[i])+'</td>';
+    }
     html+='<td style="color:#1d4ed8;font-weight:700;">'+cumulTotal(name)+'</td></tr>';
-  });
-  html+='<tr><td style="text-align:left;">合計</td>';
-  months.forEach(m=>{const t=students.reduce((s,n)=>s+monthTotal(n,m),0);html+='<td>'+t+'</td>';});
-  const grandTotal=students.reduce((s,n)=>s+cumulTotal(n),0);
-  html+='<td>'+grandTotal+'</td></tr></table></div>';
+  }
+  html+='<tr style="background:#fff9e6;"><td style="text-align:left;font-weight:700;">合計</td>';
+  for(var i=0;i<months.length;i++){
+    var t=0;
+    for(var si=0;si<students.length;si++) t+=monthTotal(students[si],months[i]);
+    html+='<td style="font-weight:700;">'+t+'</td>';
+  }
+  var grand=0;
+  for(var si=0;si<students.length;si++) grand+=cumulTotal(students[si]);
+  html+='<td style="font-weight:700;">'+grand+'</td></tr>';
+  html+='</table></div></div>';
   el.innerHTML=html;
 }
+
 function renderSettings(){
-  document.getElementById('name-list').innerHTML=students.map((n,i)=>'<div class="settings-row"><input type="text" value="'+n+'" id="sname-'+i+'" /><button class="del-btn" onclick="removeStudent('+i+')">×</button></div>').join('');
+  var html='';
+  for(var i=0;i<students.length;i++){
+    html+='<div class="settings-row"><input type="text" value="'+students[i]+'" id="sname-'+i+'" />';
+    html+='<button class="del-btn" onclick="removeStudent('+i+')">x</button></div>';
+  }
+  document.getElementById('name-list').innerHTML=html;
 }
+
 function addStudent(){students.push('新しい生徒');renderSettings();}
+
 function removeStudent(i){students.splice(i,1);renderSettings();}
+
 function saveNames(){
-  students=Array.from(document.querySelectorAll('[id^="sname-"]')).map(inp=>inp.value.trim()).filter(n=>n);
+  var inputs=document.querySelectorAll('[id^="sname-"]');
+  var newStudents=[];
+  for(var i=0;i<inputs.length;i++){
+    var v=inputs[i].value.trim();
+    if(v) newStudents.push(v);
+  }
+  students=newStudents;
   save();renderSettings();renderRecord();
-  const btn=document.querySelector('.save-btn');btn.textContent='保存しました！';setTimeout(()=>btn.textContent='保存する',1500);
+  var btn=document.querySelector('.save-btn');
+  btn.textContent='保存しました！';
+  setTimeout(function(){btn.textContent='保存する';},1500);
 }
+
 function showScreen(name,tabEl){
-  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
+  var screens=document.querySelectorAll('.screen');
+  for(var i=0;i<screens.length;i++) screens[i].classList.remove('active');
+  var tabs=document.querySelectorAll('.tab');
+  for(var i=0;i<tabs.length;i++) tabs[i].classList.remove('on');
   document.getElementById('screen-'+name).classList.add('active');
   tabEl.classList.add('on');
-  if(name==='message')renderMessageScreen();
-  if(name==='settings')renderSettings();
-  if(name==='cumul')renderCumul();
+  if(name==='message') renderMessageScreen();
+  if(name==='settings') renderSettings();
+  if(name==='cumul') renderCumul();
 }
+
 renderRecord();
 </script>
 </body>
