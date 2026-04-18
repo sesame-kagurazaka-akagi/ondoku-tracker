@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="音読記録">
-<title>音読記録v3</title>
+<title>音読記録v4</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:-apple-system,sans-serif;background:#f5f5f5;max-width:480px;margin:0 auto;}
@@ -29,21 +29,22 @@ body{font-family:-apple-system,sans-serif;background:#f5f5f5;max-width:480px;mar
 .dots{display:flex;gap:2px;margin-top:2px;}
 .dot{width:7px;height:7px;border-radius:50%;}
 .dot-r{background:#60a5fa;}
-.dot-a{background:#f59e0b;}
 .has-read{background:#eff6ff;}
-.has-anime{background:#fffbeb;}
-.has-both{background:#f0fdf4;}
-.summary-row{display:flex;gap:8px;}
+.legend{display:flex;gap:12px;margin-bottom:12px;}
+.li{display:flex;align-items:center;gap:4px;font-size:11px;color:#666;}
+.ld{width:8px;height:8px;border-radius:50%;}
+.month-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.month-nav button{width:32px;height:32px;border-radius:50%;border:1px solid #ddd;background:#fff;cursor:pointer;font-size:18px;color:#333;}
+.month-nav span{font-size:15px;font-weight:600;color:#222;}
+.summary-row{display:flex;gap:8px;margin-top:8px;}
 .sbox{flex:1;background:#f5f5f5;border-radius:10px;padding:8px;text-align:center;}
 .sbox .val{font-size:18px;font-weight:700;color:#222;}
 .sbox .lbl{font-size:10px;color:#888;}
 .ame-badge{background:#fef9c3;color:#854d0e;font-size:11px;padding:3px 10px;border-radius:20px;margin-bottom:8px;display:inline-block;}
-.month-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
-.month-nav button{width:32px;height:32px;border-radius:50%;border:1px solid #ddd;background:#fff;cursor:pointer;font-size:18px;color:#333;}
-.month-nav span{font-size:15px;font-weight:600;color:#222;}
-.legend{display:flex;gap:12px;margin-bottom:12px;}
-.li{display:flex;align-items:center;gap:4px;font-size:11px;color:#666;}
-.ld{width:8px;height:8px;border-radius:50%;}
+.anime-input-row{display:flex;align-items:center;justify-content:space-between;background:#fffbeb;border-radius:10px;padding:10px 12px;margin-top:8px;}
+.anime-input-row label{font-size:13px;color:#854d0e;font-weight:600;}
+.anime-input-row input{width:60px;font-size:16px;font-weight:700;text-align:center;border:1px solid #f59e0b;border-radius:8px;padding:4px;color:#222;}
+.anime-save-btn{background:#f59e0b;color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;}
 .season-card{background:#fff;border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,0.07);}
 .sname{font-size:15px;font-weight:600;margin-bottom:10px;color:#222;}
 .stitle{font-size:12px;font-weight:600;color:#555;margin:10px 0 6px;}
@@ -96,7 +97,6 @@ body{font-family:-apple-system,sans-serif;background:#f5f5f5;max-width:480px;mar
     <div class="mtitle" id="m-name"></div>
     <div class="mdate" id="m-date"></div>
     <div class="mrow"><label>音読した</label><input type="checkbox" id="m-read"></div>
-    <div class="mrow" id="m-anime-row"><label>アニメ視聴（ゴールド★）</label><input type="checkbox" id="m-anime"></div>
     <button class="mclose" onclick="closeModal()">保存して閉じる</button>
   </div>
 </div>
@@ -115,12 +115,14 @@ try{var tmp2=localStorage.getItem('od');if(tmp2)DAT=JSON.parse(tmp2);}catch(e){}
 function sv(){try{localStorage.setItem('oc',JSON.stringify(CL));localStorage.setItem('od',JSON.stringify(DAT));}catch(e){}}
 function pad(n){return String(n).padStart(2,'0');}
 function gk(id,n,y,m,d){return id+'|'+n+'|'+y+'-'+pad(m)+'-'+pad(d);}
-function gd(id,n,y,m,d){return DAT[gk(id,n,y,m,d)]||{r:false,a:false};}
-function sd2(id,n,y,m,d,r,a){DAT[gk(id,n,y,m,d)]={r:r,a:a};sv();}
+function gd(id,n,y,m,d){return DAT[gk(id,n,y,m,d)]||{r:false};}
+function sd2(id,n,y,m,d,r){DAT[gk(id,n,y,m,d)]={r:r};sv();}
+function gak(id,n,y,m){return 'anime|'+id+'|'+n+'|'+y+'-'+pad(m);}
+function getAnime(id,n,y,m){return DAT[gak(id,n,y,m)]||0;}
+function setAnime(id,n,y,m,v){DAT[gak(id,n,y,m)]=parseInt(v)||0;sv();}
 function dim(y,m){return new Date(y,m,0).getDate();}
 function fd(y,m){return new Date(y,m-1,1).getDay();}
 function mrc(id,n,y,m){var c=0,D=dim(y,m);for(var d=1;d<=D;d++)if(gd(id,n,y,m,d).r)c++;return c;}
-function mac(id,n,y,m){var c=0,D=dim(y,m);for(var d=1;d<=D;d++)if(gd(id,n,y,m,d).a)c++;return c;}
 function wrc(id,n,y,m){
   var now=new Date(),ws=new Date(now);ws.setDate(now.getDate()-now.getDay());
   var c=0;
@@ -142,12 +144,12 @@ function renderTabs(){
 function renderCal(){
   var cl=CL[ci],y=cy,m=cm,now=new Date();
   var h='<div class="month-nav"><button onclick="pm()">&#8249;</button><span>'+y+'年'+MN[m-1]+'</span><button onclick="nm()">&#8250;</button></div>';
-  h+='<div class="legend"><div class="li"><div class="ld" style="background:#60a5fa"></div>音読</div>';
-  if(cl.anime)h+='<div class="li"><div class="ld" style="background:#f59e0b"></div>アニメ(ゴールド★)</div>';
-  h+='</div>';
+  h+='<div class="legend"><div class="li"><div class="ld" style="background:#60a5fa"></div>音読</div></div>';
   for(var si=0;si<cl.st.length;si++){
     var name=cl.st[si];
-    var rc=mrc(cl.id,name,y,m),ac=cl.anime?mac(cl.id,name,y,m):0,wc=wrc(cl.id,name,y,m);
+    var rc=mrc(cl.id,name,y,m);
+    var ac=cl.anime?getAnime(cl.id,name,y,m):0;
+    var wc=wrc(cl.id,name,y,m);
     h+='<div class="card">';
     if(cl.ame&&wc>=5)h+='<div class="ame-badge">🍬 今週5回達成！飴あり</div>';
     h+='<div class="student-name">'+name+'</div>';
@@ -159,25 +161,36 @@ function renderCal(){
     for(var d=1;d<=td;d++){
       var dd=gd(cl.id,name,y,m,d);
       var iT=now.getFullYear()===y&&now.getMonth()+1===m&&now.getDate()===d;
-      var dc='cal-day';
-      if(iT)dc+=' today';
-      if(dd.r&&dd.a)dc+=' has-both';
-      else if(dd.r)dc+=' has-read';
-      else if(dd.a)dc+=' has-anime';
+      var dc='cal-day'+(iT?' today':'')+(dd.r?' has-read':'');
       var nn=name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
       h+='<div class="'+dc+'" onclick="om(\''+nn+'\','+y+','+m+','+d+')">';
       h+='<span class="day-num">'+d+'</span><div class="dots">';
       if(dd.r)h+='<div class="dot dot-r"></div>';
-      if(dd.a)h+='<div class="dot dot-a"></div>';
       h+='</div></div>';
     }
-    h+='</div><div class="summary-row">';
+    h+='</div>';
+    h+='<div class="summary-row">';
     h+='<div class="sbox"><div class="val">'+rc+'</div><div class="lbl">音読回数</div></div>';
-    if(cl.anime)h+='<div class="sbox"><div class="val">'+ac+'</div><div class="lbl">アニメ回数</div></div>';
+    if(cl.anime)h+='<div class="sbox"><div class="val">'+ac+'</div><div class="lbl">アニメ(ゴールド★)</div></div>';
     h+='<div class="sbox"><div class="val">'+((rc+ac)*5)+'円</div><div class="lbl">今月積立</div></div>';
-    h+='</div></div>';
+    h+='</div>';
+    if(cl.anime){
+      var nn2=name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+      h+='<div class="anime-input-row">';
+      h+='<label>アニメ(ゴールド★)回数</label>';
+      h+='<input type="number" min="0" max="31" value="'+ac+'" id="ai-'+si+'">';
+      h+='<button class="anime-save-btn" onclick="saveAnime(\''+nn2+'\','+y+','+m+','+si+')">保存</button>';
+      h+='</div>';
+    }
+    h+='</div>';
   }
   document.getElementById('s-cal').innerHTML=h;
+}
+function saveAnime(name,y,m,si){
+  var cl=CL[ci];
+  var v=document.getElementById('ai-'+si).value;
+  setAnime(cl.id,name,y,m,v);
+  renderCal();
 }
 function renderSeason(){
   var cl=CL[ci],now=new Date(),ty=now.getFullYear();
@@ -191,9 +204,11 @@ function renderSeason(){
       for(var mi2=0;mi2<s.m.length;mi2++){
         var mo=s.m[mi2],yr=ty;
         if(mo>=10&&now.getMonth()+1<=2)yr=ty-1;
-        var rc=mrc(cl.id,name,yr,mo),ac=cl.anime?mac(cl.id,name,yr,mo):0,yen=(rc+ac)*5;
+        var rc=mrc(cl.id,name,yr,mo);
+        var ac=cl.anime?getAnime(cl.id,name,yr,mo):0;
+        var yen=(rc+ac)*5;
         tot+=yen;
-        h+='<div class="srow"><span>'+MN[mo-1]+'</span><span>音読'+rc+'回'+(cl.anime?' アニメ'+ac:'')+'</span><span class="syen">'+yen+'円</span></div>';
+        h+='<div class="srow"><span>'+MN[mo-1]+'</span><span>音読'+rc+'回'+(cl.anime?' アニメ'+ac+'回':'')+'</span><span class="syen">'+yen+'円</span></div>';
       }
       var units=[1000,700,500,200],card=0;
       for(var ui=0;ui<units.length;ui++)while(tot-card>=units[ui])card+=units[ui];
@@ -217,7 +232,7 @@ function renderMsg(){
   var cl=CL[ci],v=document.getElementById('msel').value,p=v.split('-'),y=parseInt(p[0]),m=parseInt(p[1]);
   var lines='【'+y+'年'+MN[m-1]+'の音読チャレンジ結果】\n\nみなさん、今月もよくがんばりました！\n\n';
   for(var i=0;i<cl.st.length;i++){
-    var n=cl.st[i],rc=mrc(cl.id,n,y,m),ac=cl.anime?mac(cl.id,n,y,m):0,yen=(rc+ac)*5;
+    var n=cl.st[i],rc=mrc(cl.id,n,y,m),ac=cl.anime?getAnime(cl.id,n,y,m):0,yen=(rc+ac)*5;
     lines+='⭐ '+n+' さん：音読'+rc+'回'+(cl.anime?' アニメ'+ac+'回':'')+' → '+yen+'円積立\n';
   }
   lines+='\nシーズン末に図書カードでお渡しします🎁\n引き続きよろしくお願いします🎵';
@@ -250,13 +265,11 @@ function om(name,y,m,d){
   document.getElementById('m-name').textContent=name;
   document.getElementById('m-date').textContent=y+'年'+MN[m-1]+d+'日';
   document.getElementById('m-read').checked=dd.r;
-  document.getElementById('m-anime').checked=dd.a;
-  document.getElementById('m-anime-row').style.display=cl.anime?'flex':'none';
   document.getElementById('modal').classList.add('open');
 }
 function closeModal(){
-  var cl=CL[ci],r=document.getElementById('m-read').checked,a=document.getElementById('m-anime').checked;
-  sd2(cl.id,mi.name,mi.y,mi.m,mi.d,r,a);
+  var cl=CL[ci],r=document.getElementById('m-read').checked;
+  sd2(cl.id,mi.name,mi.y,mi.m,mi.d,r);
   document.getElementById('modal').classList.remove('open');
   renderCal();
 }
