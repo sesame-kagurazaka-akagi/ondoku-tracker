@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="音読記録">
+<title>音読記録</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,sans-serif;background:#f5f5f5;max-width:480px;margin:0 auto;}
+.tab-bar{display:flex;background:#fff;border-bottom:1px solid #e0e0e0;position:sticky;top:0;z-index:10;}
+.tab{flex:1;padding:12px 4px;font-size:13px;text-align:center;color:#888;cursor:pointer;border:none;background:none;border-bottom:2px solid transparent;}
+.tab.on{color:#222;border-bottom-color:#222;font-weight:600;}
+.screen{display:none;padding:16px;}
+.screen.active{display:block;}
+.section-title{font-size:13px;color:#888;margin-bottom:12px;font-weight:600;}
+.card{background:#fff;border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,0.07);}
+.student-header{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+.avatar{width:38px;height:38px;border-radius:50%;background:#dbeafe;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:600;color:#1d4ed8;flex-shrink:0;}
+.student-name{font-size:16px;font-weight:600;color:#222;}
+.week-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.wlabel{font-size:12px;color:#888;width:48px;flex-shrink:0;}
+.counter{display:flex;align-items:center;gap:10px;}
+.cnt-btn{width:30px;height:30px;border-radius:50%;border:1px solid #ddd;background:#f5f5f5;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#333;line-height:1;}
+.cnt-val{font-size:16px;font-weight:600;min-width:22px;text-align:center;color:#222;}
+.badge{font-size:11px;padding:3px 9px;border-radius:20px;}
+.badge-ok{background:#dcfce7;color:#166534;}
+.badge-ng{background:#f3f4f6;color:#6b7280;}
+.month-total{display:flex;justify-content:space-between;align-items:center;padding-top:10px;border-top:1px solid #f0f0f0;margin-top:6px;}
+.month-num{font-size:20px;font-weight:700;color:#222;}
+.month-sub{font-size:12px;color:#888;}
+.msg-box{background:#fff;border-radius:14px;padding:16px;font-size:14px;line-height:1.8;color:#222;white-space:pre-wrap;box-shadow:0 1px 4px rgba(0,0,0,0.07);}
+.copy-btn{margin-top:10px;width:100%;padding:12px;border-radius:10px;border:1px solid #ddd;background:#fff;cursor:pointer;font-size:14px;font-weight:600;color:#333;}
+.month-select{font-size:14px;padding:6px 10px;border-radius:10px;border:1px solid #ddd;background:#fff;color:#222;margin-bottom:14px;width:100%;}
+.settings-row{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+.settings-row input[type=text]{flex:1;font-size:15px;padding:8px 12px;border-radius:10px;border:1px solid #ddd;background:#fff;color:#222;}
+.del-btn{width:30px;height:30px;border-radius:50%;border:1px solid #ddd;background:none;cursor:pointer;font-size:16px;color:#888;}
+.add-btn{width:100%;padding:10px;border:1.5px dashed #ddd;border-radius:10px;background:none;cursor:pointer;font-size:14px;color:#888;margin-top:4px;}
+.save-btn{width:100%;padding:12px;border-radius:10px;border:none;background:#222;cursor:pointer;font-size:15px;font-weight:600;color:#fff;margin-top:14px;}
+</style>
+</head>
+<body>
+<div class="tab-bar">
+  <button class="tab on" onclick="showScreen('record',this)">記録</button>
+  <button class="tab" onclick="showScreen('message',this)">メッセージ</button>
+  <button class="tab" onclick="showScreen('settings',this)">設定</button>
+</div>
+<div id="screen-record" class="screen active"></div>
+<div id="screen-message" class="screen">
+  <p class="section-title">月末 — 保護者向けメッセージ</p>
+  <select class="month-select" id="msg-month-sel" onchange="renderMessage()"></select>
+  <div class="msg-box" id="msg-output"></div>
+  <button class="copy-btn" onclick="copyMsg()">コピーする</button>
+</div>
+<div id="screen-settings" class="screen">
+  <p class="section-title">生徒名の編集</p>
+  <div id="name-list"></div>
+  <button class="add-btn" onclick="addStudent()">＋ 生徒を追加</button>
+  <button class="save-btn" onclick="saveNames()">保存する</button>
+</div>
+<script>
+const WEEKS=['第1週','第2週','第3週','第4週','第5週'];
+const MONTHS=['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+const THRESHOLD=5;
+let students=JSON.parse(localStorage.getItem('students')||'["あかり","けんた","まさき","しゅうや","そう","はやと"]');
+let data=JSON.parse(localStorage.getItem('data')||'{}');
+function save(){localStorage.setItem('students',JSON.stringify(students));localStorage.setItem('data',JSON.stringify(data));}
+function currentMonth(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');}
+function monthLabel(m){const[y,mo]=m.split('-');return y+'年'+MONTHS[parseInt(mo)-1];}
+function weeksInMonth(m){const[y,mo]=m.split('-');const first=new Date(y,parseInt(mo)-1,1).getDay();const days=new Date(y,parseInt(mo),0).getDate();return Math.ceil((first+days)/7);}
+function getVal(name,month,week){return data[name+'|'+month+'|'+week]||0;}
+function setVal(name,month,week,v){data[name+'|'+month+'|'+week]=Math.max(0,v);save();renderRecord();}
+function monthTotal(name,month){let t=0;for(let w=0;w<weeksInMonth(month);w++)t+=getVal(name,month,w);return t;}
+function renderRecord(){
+  const month=currentMonth();const weeks=weeksInMonth(month);const el=document.getElementById('screen-record');
+  el.innerHTML='<p class="section-title">'+monthLabel(month)+'の記録</p>';
+  students.forEach(name=>{
+    const total=monthTotal(name,month);
+    let html='<div class="card"><div class="student-header"><div class="avatar">'+name.charAt(0)+'</div><div class="student-name">'+name+'</div></div>';
+    for(let w=0;w<weeks;w++){
+      const v=getVal(name,month,w);const ok=v>=THRESHOLD;const nn=name.replace(/'/g,"\\'");
+      html+='<div class="week-row"><span class="wlabel">'+WEEKS[w]+'</span><div class="counter"><button class="cnt-btn" onclick="setVal(\''+nn+'\',\''+month+'\','+w+','+(v-1)+')">−</button><span class="cnt-val">'+v+'</span><button class="cnt-btn" onclick="setVal(\''+nn+'\',\''+month+'\','+w+','+(v+1)+')">＋</button></div><span class="badge '+(ok?'badge-ok':'badge-ng')+'">'+(ok?'🍬 飴あり':'−')+'</span></div>';
+    }
+    html+='<div class="month-total"><div><div class="month-sub">今月の合計</div><div class="month-num">'+total+' 回</div></div></div></div>';
+    el.innerHTML+=html;
+  });
+}
+function renderMessageScreen(){
+  const sel=document.getElementById('msg-month-sel');const now=new Date();const months=[];
+  for(let i=0;i<6;i++){const d=new Date(now.getFullYear(),now.getMonth()-i,1);months.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'));}
+  sel.innerHTML=months.map(m=>'<option value="'+m+'">'+monthLabel(m)+'</option>').join('');
+  renderMessage();
+}
+function renderMessage(){
+  const sel=document.getElementById('msg-month-sel').value;const label=monthLabel(sel);
+  let lines='【'+label+'の音読チャレンジ結果】\n\nみなさん、今月もよくがんばりました！\n\n';
+  students.forEach(name=>{const total=monthTotal(name,sel);const star=total>=20?'⭐⭐':total>=10?'⭐':'　';lines+=star+' '+name+' さん：'+total+' 回\n';});
+  const grand=students.reduce((s,n)=>s+monthTotal(n,sel),0);
+  lines+='\nみんなの合計：'+grand+' 回\n\n引き続き毎日の音読をよろしくお願いします🎵';
+  document.getElementById('msg-output').textContent=lines;
+}
+function copyMsg(){
+  navigator.clipboard.writeText(document.getElementById('msg-output').textContent).then(()=>{
+    const btn=document.querySelector('.copy-btn');btn.textContent='コピーしました！';setTimeout(()=>btn.textContent='コピーする',1500);
+  });
+}
+function renderSettings(){
+  document.getElementById('name-list').innerHTML=students.map((n,i)=>'<div class="settings-row"><input type="text" value="'+n+'" id="sname-'+i+'" /><button class="del-btn" onclick="removeStudent('+i+')">×</button></div>').join('');
+}
+function addStudent(){students.push('新しい生徒');renderSettings();}
+function removeStudent(i){students.splice(i,1);renderSettings();}
+function saveNames(){
+  students=Array.from(document.querySelectorAll('[id^="sname-"]')).map(inp=>inp.value.trim()).filter(n=>n);
+  save();renderSettings();renderRecord();
+  const btn=document.querySelector('.save-btn');btn.textContent='保存しました！';setTimeout(()=>btn.textContent='保存する',1500);
+}
+function showScreen(name,tabEl){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
+  document.getElementById('screen-'+name).classList.add('active');
+  tabEl.classList.add('on');
+  if(name==='message')renderMessageScreen();
+  if(name==='settings')renderSettings();
+}
+renderRecord();
+</script>
+</body>
+</html>
