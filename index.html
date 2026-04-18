@@ -11,7 +11,7 @@
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:-apple-system,sans-serif;background:#f5f5f5;max-width:480px;margin:0 auto;}
 .tab-bar{display:flex;background:#fff;border-bottom:1px solid #e0e0e0;position:sticky;top:0;z-index:10;}
-.tab{flex:1;padding:12px 4px;font-size:13px;text-align:center;color:#888;cursor:pointer;border:none;background:none;border-bottom:2px solid transparent;}
+.tab{flex:1;padding:12px 2px;font-size:12px;text-align:center;color:#888;cursor:pointer;border:none;background:none;border-bottom:2px solid transparent;}
 .tab.on{color:#222;border-bottom-color:#222;font-weight:600;}
 .screen{display:none;padding:16px;}
 .screen.active{display:block;}
@@ -39,12 +39,20 @@ body{font-family:-apple-system,sans-serif;background:#f5f5f5;max-width:480px;mar
 .del-btn{width:30px;height:30px;border-radius:50%;border:1px solid #ddd;background:none;cursor:pointer;font-size:16px;color:#888;}
 .add-btn{width:100%;padding:10px;border:1.5px dashed #ddd;border-radius:10px;background:none;cursor:pointer;font-size:14px;color:#888;margin-top:4px;}
 .save-btn{width:100%;padding:12px;border-radius:10px;border:none;background:#222;cursor:pointer;font-size:15px;font-weight:600;color:#fff;margin-top:14px;}
+.cumul-table{width:100%;border-collapse:collapse;font-size:13px;}
+.cumul-table th{background:#f5f5f5;padding:8px 6px;text-align:center;font-weight:600;color:#555;border-bottom:1px solid #e0e0e0;}
+.cumul-table td{padding:8px 6px;text-align:center;border-bottom:1px solid #f0f0f0;color:#222;}
+.cumul-table tr:last-child td{font-weight:700;background:#fff9e6;}
+.bar-wrap{background:#f0f0f0;border-radius:6px;height:10px;width:100%;margin-top:4px;}
+.bar-fill{background:#60a5fa;border-radius:6px;height:10px;}
+.chart-card{background:#fff;border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,0.07);}
 </style>
 </head>
 <body>
 <div class="tab-bar">
   <button class="tab on" onclick="showScreen('record',this)">記録</button>
   <button class="tab" onclick="showScreen('message',this)">メッセージ</button>
+  <button class="tab" onclick="showScreen('cumul',this)">累計</button>
   <button class="tab" onclick="showScreen('settings',this)">設定</button>
 </div>
 <div id="screen-record" class="screen active"></div>
@@ -53,6 +61,10 @@ body{font-family:-apple-system,sans-serif;background:#f5f5f5;max-width:480px;mar
   <select class="month-select" id="msg-month-sel" onchange="renderMessage()"></select>
   <div class="msg-box" id="msg-output"></div>
   <button class="copy-btn" onclick="copyMsg()">コピーする</button>
+</div>
+<div id="screen-cumul" class="screen">
+  <p class="section-title">累計記録</p>
+  <div id="cumul-content"></div>
 </div>
 <div id="screen-settings" class="screen">
   <p class="section-title">生徒名の編集</p>
@@ -73,6 +85,16 @@ function weeksInMonth(m){const[y,mo]=m.split('-');const first=new Date(y,parseIn
 function getVal(name,month,week){return data[name+'|'+month+'|'+week]||0;}
 function setVal(name,month,week,v){data[name+'|'+month+'|'+week]=Math.max(0,v);save();renderRecord();}
 function monthTotal(name,month){let t=0;for(let w=0;w<weeksInMonth(month);w++)t+=getVal(name,month,w);return t;}
+function allMonths(){
+  const keys=Object.keys(data);
+  const ms=new Set();
+  keys.forEach(k=>{const p=k.split('|');if(p.length===3)ms.add(p[1]);});
+  const cur=currentMonth();ms.add(cur);
+  return Array.from(ms).sort();
+}
+function cumulTotal(name){
+  return allMonths().reduce((s,m)=>s+monthTotal(name,m),0);
+}
 function renderRecord(){
   const month=currentMonth();const weeks=weeksInMonth(month);const el=document.getElementById('screen-record');
   el.innerHTML='<p class="section-title">'+monthLabel(month)+'の記録</p>';
@@ -106,6 +128,36 @@ function copyMsg(){
     const btn=document.querySelector('.copy-btn');btn.textContent='コピーしました！';setTimeout(()=>btn.textContent='コピーする',1500);
   });
 }
+function renderCumul(){
+  const months=allMonths();
+  const el=document.getElementById('cumul-content');
+  const maxVal=Math.max(...students.map(n=>cumulTotal(n)),1);
+  let html='<div class="chart-card"><p class="section-title" style="margin-bottom:16px;">累計ランキング</p>';
+  const sorted=[...students].sort((a,b)=>cumulTotal(b)-cumulTotal(a));
+  sorted.forEach((name,i)=>{
+    const total=cumulTotal(name);
+    const pct=Math.round(total/maxVal*100);
+    html+='<div style="margin-bottom:14px;">';
+    html+='<div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="font-size:14px;font-weight:600;">'+（i===0?'🥇 ':i===1?'🥈 ':i===2?'🥉 ':''）+name+'</span><span style="font-size:14px;font-weight:700;color:#1d4ed8;">'+total+' 回</span></div>';
+    html+='<div class="bar-wrap"><div class="bar-fill" style="width:'+pct+'%"></div></div>';
+    html+='</div>';
+  });
+  html+='</div>';
+  html+='<div class="chart-card"><p class="section-title" style="margin-bottom:12px;">月別一覧</p>';
+  html+='<table class="cumul-table"><tr><th>名前</th>';
+  months.forEach(m=>{html+='<th>'+monthLabel(m).replace('年','<br>').replace('の','')+'</th>';});
+  html+='<th>累計</th></tr>';
+  students.forEach(name=>{
+    html+='<tr><td style="text-align:left;font-weight:600;">'+name+'</td>';
+    months.forEach(m=>{html+='<td>'+monthTotal(name,m)+'</td>';});
+    html+='<td style="color:#1d4ed8;font-weight:700;">'+cumulTotal(name)+'</td></tr>';
+  });
+  html+='<tr><td style="text-align:left;">合計</td>';
+  months.forEach(m=>{const t=students.reduce((s,n)=>s+monthTotal(n,m),0);html+='<td>'+t+'</td>';});
+  const grandTotal=students.reduce((s,n)=>s+cumulTotal(n),0);
+  html+='<td>'+grandTotal+'</td></tr></table></div>';
+  el.innerHTML=html;
+}
 function renderSettings(){
   document.getElementById('name-list').innerHTML=students.map((n,i)=>'<div class="settings-row"><input type="text" value="'+n+'" id="sname-'+i+'" /><button class="del-btn" onclick="removeStudent('+i+')">×</button></div>').join('');
 }
@@ -123,6 +175,7 @@ function showScreen(name,tabEl){
   tabEl.classList.add('on');
   if(name==='message')renderMessageScreen();
   if(name==='settings')renderSettings();
+  if(name==='cumul')renderCumul();
 }
 renderRecord();
 </script>
